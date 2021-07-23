@@ -1,0 +1,52 @@
+#!/bin/bash
+
+clear
+
+if [ -z $1 ] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]
+then
+	echo "Usage:"
+	echo "compresspdf <pdf name without extension>"
+	echo "Pass -k flag anywhere to keep backup pdf."
+else
+	f=$1
+	if [ ! -s ${f}.pdf ]
+	then
+		echo "File not found. Exiting now..."
+	else
+		echo 'Staring PDF compression...'
+		echo "Getting initial size of '${f}.pdf'..."
+		isize=$(du -sh ${f}.pdf | awk '{ print $1 }')
+		
+		echo "Preparing backup of ${f}.pdf..."
+		cp ${f}.pdf ${f}.pdf.bak
+		
+		echo "Compressing '${f}.pdf'..."
+		gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress -dNOPAUSE -dQUIET -dBATCH -sOutputFile=${f}_compressed.pdf ${f}.pdf
+		
+		echo "Getting final size of '${f}.pdf'..."
+		fsize=$(du -sh ${f}_compressed.pdf | awk '{ print $1 }')
+		
+		if [ -s ${f}_compressed.pdf ]
+		then
+			echo "Success!"
+			echo "'${f}.pdf' has been compressed from ${isize} to ${fsize}."
+			flag=0
+			for a in "$@"
+			do 
+				if [[ "$a" == "-k" ]]
+				then
+					flag=$((flag+1))
+				fi
+			done
+			if [ ${flag} -ge 1 ]
+			then
+				echo "Keeping the backup PDF..."
+				mv ${f}_compressed.pdf ${f}.pdf
+			else
+				echo "Removing the backup PDF..."
+				rm ${f}.pdf.bak
+				mv ${f}_compressed.pdf ${f}.pdf
+			fi
+		fi
+	fi
+fi
